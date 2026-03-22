@@ -1,0 +1,776 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="project-database.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="0"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="3001"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title="Avatar" custom_title="0" dock_id="1" table="4,6:mainAvatar"/><dock_state state="000000ff00000000fd0000000100000002000001c30000021ffc0100000001fb000000160064006f0063006b00420072006f00770073006500310100000000000001c30000010b00ffffff000001c30000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings><table schema="main" name="Avatar" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="69"/><column index="2" value="109"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="Notifications" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="103"/><column index="2" value="74"/><column index="3" value="82"/><column index="4" value="76"/><column index="5" value="71"/><column index="6" value="91"/><column index="7" value="107"/><column index="8" value="76"/><column index="9" value="93"/><column index="10" value="56"/><column index="11" value="114"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="articles" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort><column index="1" mode="0"/></sort><column_widths><column index="1" value="70"/><column index="2" value="58"/><column index="3" value="251"/><column index="4" value="300"/><column index="5" value="76"/><column index="6" value="114"/><column index="7" value="114"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="users" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="57"/><column index="2" value="78"/><column index="3" value="300"/><column index="4" value="79"/><column index="5" value="76"/><column index="6" value="122"/><column index="7" value="54"/><column index="8" value="68"/><column index="9" value="108"/><column index="10" value="69"/><column index="11" value="67"/><column index="12" value="114"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table></browse_table_settings></tab_browse><tab_sql><sql name="SQL 1*">-- ----------  USERS  --------------------------------------------------------
+CREATE TABLE users (
+    user_id        INTEGER NOT NULL PRIMARY KEY,
+    username       VARCHAR(50)  UNIQUE NOT NULL,
+    password_hash  CHAR(60)     NOT NULL,
+    first_name     VARCHAR(50),
+    last_name      VARCHAR(50),
+    email          VARCHAR(255) UNIQUE NOT NULL,
+    gender         CHAR(1), --gender IN ('M','F','O')
+    dob            DATE,
+    description    VARCHAR(1000),
+    avatar_id      INTEGER,
+    is_admin       BOOLEAN      DEFAULT FALSE,
+    created_dttm   DATETIME  DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ----------  ARTICLES  -----------------------------------------------------
+CREATE TABLE articles (
+    article_id     INTEGER NOT NULL PRIMARY KEY,
+    user_id        INTEGER NOT NULL REFERENCES users(user_id),
+    title          VARCHAR(255) NOT NULL,
+    content        VARCHAR(6000) NOT NULL,
+    is_deleted     BOOLEAN DEFAULT 0,
+    created_dttm   DATETIME  DEFAULT CURRENT_TIMESTAMP,
+    updated_dttm   DATETIME
+);
+
+-- ----------  TAGS + bridge  ------------------------------------------------
+CREATE TABLE tags (
+    tag_id    INTEGER NOT NULL PRIMARY KEY,
+    tag_name  VARCHAR(50) UNIQUE NOT NULL
+);
+
+CREATE TABLE article_tags (
+    article_id INTEGER NOT NULL REFERENCES articles(article_id) ,
+    tag_id     INTEGER NOT NULL REFERENCES tags(tag_id),
+    PRIMARY KEY (article_id, tag_id)
+);
+
+-- ----------  ARTICLE IMAGES  ----------------------------------------------
+CREATE TABLE article_images (
+    article_id   INTEGER NOT NULL REFERENCES articles(article_id),
+    image_id     INTEGER NOT NULL,
+    image_url    VARCHAR(2000) NOT NULL,
+    created_dttm DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (article_id, image_id)
+);
+
+-- ----------  COMMENTS  -----------------------------------------------------
+CREATE TABLE comments (
+    comment_id   INTEGER NOT NULL PRIMARY KEY,
+    article_id   INTEGER NOT NULL REFERENCES articles(article_id) ,
+    parent_id      INTEGER  REFERENCES comments(comment_id),  
+    user_id      INTEGER NOT NULL REFERENCES users(user_id),
+    content      VARCHAR(6000) NOT NULL,
+    created_dttm DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_dttm DATETIME,   
+    is_deleted BOOLEAN DEFAULT 0
+);
+
+-- ----------  COMMENT MENTIONS  --------------------------------------------
+CREATE TABLE comment_mentions (
+    comment_id    INTEGER NOT NULL REFERENCES comments(comment_id),
+    mentioned_id  INTEGER NOT NULL REFERENCES users(user_id),
+    created_dttm  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (comment_id, mentioned_id)
+);
+
+-- ----------  ARTICLE LIKES  -----------------------------------------------
+CREATE TABLE article_likes (
+    user_id      INTEGER NOT NULL REFERENCES users(user_id)    ,
+    article_id   INTEGER NOT NULL REFERENCES articles(article_id) ,
+    created_dttm DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, article_id)           
+);
+
+-- ----------  SUBSCRIPTIONS  ------------------------------------------------
+CREATE TABLE subscriptions (
+    subscription_id INTEGER NOT NULL PRIMARY KEY,
+    subscriber_id   INTEGER NOT NULL REFERENCES users(user_id) ,
+    target_user_id  INTEGER NOT NULL REFERENCES users(user_id) ,
+    created_dttm    DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (subscriber_id, target_user_id)         
+);
+
+-- ----------  NOTIFICATIONS  ------------------------------------------------
+CREATE TABLE Notifications (
+    notification_id INTEGER PRIMARY KEY,
+    sender_id INTEGER,
+    receiver_id INTEGER,
+    type TEXT, -- values like 'new_article' or 'tag_comment'
+    article_id INTEGER,
+    comment_id INTEGER,
+    delivered_dttm DATETIME,
+    read_dttm DATETIME,
+    clicked_dttm DATETIME,
+    is_read BOOLEAN DEFAULT 0,
+    created_dttm DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES Users(user_id),
+    FOREIGN KEY (receiver_id) REFERENCES Users(user_id),
+    FOREIGN KEY (article_id) REFERENCES Articles(article_id) ,
+    FOREIGN KEY (comment_id) REFERENCES Comments(comment_id)
+);
+
+-- ----------  AVATAR  ------------------------------------------------
+CREATE TABLE Avatar (
+    avatar_id INTEGER PRIMARY KEY,  
+    avatar_url VARCHAR(2000) NOT NULL 
+);
+
+
+---DUMMY DATA----------------------
+
+INSERT INTO users (username, password_hash, first_name, last_name, email, gender, dob, description, avatar_id, is_admin)
+VALUES
+('annie88', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Annie', 'Lee', 'annie@example.com', 'F', '1995-01-12', 'UI/UX designer.', 1, FALSE),
+('sherryx', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Sherry', 'Ng', 'sherry@example.com', 'F', '1993-05-23', 'Frontend developer.', 2, FALSE),
+('yangdev', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Yang', 'Chen', 'yang@example.com', 'M', '1992-07-15', 'Backend specialist.', 3, FALSE),
+('steven777', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Steven', 'Khoo', 'steven@example.com', 'M', '1994-03-08', 'Full stack engineer.', 1, TRUE),
+('liplogic', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Lip', 'Tan', 'lip@example.com', 'M', '1990-12-20', 'Project manager.', 5, FALSE),
+('alice01', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Alice', 'Wong', 'alice@example.com', 'F', '1991-02-10', 'Traveller.', 2, FALSE),
+('bobthebuilder', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Bob', 'Builder', 'bob@example.com', 'M', '1989-09-22', 'Engineer.', 3, FALSE),
+('clarenceC', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Clarence', 'Chen', 'clarence@example.com', 'M', '1993-03-03', 'Barista.', 4, FALSE),
+('daniD', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Dani', 'Dale', 'dani@example.com', 'F', '1990-04-04', 'Designer.', 1, FALSE),
+('emilyE', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Emily', 'Evans', 'emily@example.com', 'F', '1996-06-06', 'Photographer.', 2, FALSE),
+('felixF', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Felix', 'Fox', 'felix@example.com', 'M', '1992-07-07', 'Writer.', 3, FALSE),
+('graceG', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Grace', 'Green', 'grace@example.com', 'F', '1988-08-08', 'Chef.', 4, FALSE),
+('harryH', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Harry', 'Hunt', 'harry@example.com', 'M', '1987-09-09', 'Critic.', 5, FALSE),
+('ireneI', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Irene', 'Ink', 'irene@example.com', 'F', '1991-10-10', 'Artist.', 1, FALSE),
+('johnJ', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'John', 'Jones', 'john@example.com', 'M', '1993-11-11', 'Musician.', 2, FALSE),
+('kateK', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Kate', 'Kim', 'kate@example.com', 'F', '1994-12-12', 'Student.', 3, FALSE),
+('leoL', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Leo', 'Lim', 'leo@example.com', 'M', '1990-01-01', 'Writer.', 4, FALSE),
+('mariaM', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Maria', 'Moe', 'maria@example.com', 'F', '1992-02-02', 'Cafe lover.', 5, FALSE),
+('noahN', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Noah', 'Nguyen', 'noah@example.com', 'M', '1995-03-03', 'Wanderer.', 1, FALSE),
+('oliviaO', '$2b$10$xrhabxQKjLKOrKxUbDk5/.u1ydbSuwUNpkMc6lmu/V8MfcJFDifWS', 'Olivia', 'Oak', 'olivia@example.com', 'F', '1996-04-04', 'Blogger.', 2, FALSE);
+
+
+INSERT INTO articles (article_id, user_id, title, content, is_deleted, created_dttm, updated_dttm)
+VALUES
+(1, 1, 'Top 5 Hidden Cafes in Kyoto',
+&quot;&lt;h1&gt;&lt;u&gt;Top 5 Hidden Cafes in Kyoto&lt;/u&gt;&lt;/h1&gt;
+
+  &lt;p&gt;Kyoto is famous for its temples, geishas, and traditional tea houses. But tucked away in its narrow alleys and quiet neighborhoods are some &lt;b&gt;truly hidden gems&lt;/b&gt; for coffee and dessert lovers. If you're looking to escape the tourist crowds and discover cozy spots locals adore, here are the &lt;b&gt;top 5 hidden cafes in Kyoto&lt;/b&gt; that you must try.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;1. Café Bibliotic Hello!&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Step into a world of &lt;i&gt;rustic wooden shelves and vintage charm&lt;/i&gt;. Located near Kyoto Imperial Palace, this cafe is part library, part bakery. Their house-made bread is to die for, and their cappuccinos are consistently perfect. Don’t forget to browse their collection of books while sipping your coffee!&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;2. Weekenders Coffee&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;This tiny cafe hidden in a parking lot behind Teramachi Street is a &lt;b&gt;coffee lover’s dream&lt;/b&gt;. It might be hard to find, but the moment you taste their expertly brewed single-origin beans, you’ll realize it was worth the search. &lt;i&gt;Minimalist decor&lt;/i&gt; and a serious focus on quality make this a must-visit for espresso aficionados.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;3. Walden Woods Kyoto&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Inspired by Henry David Thoreau’s &lt;i&gt;“Walden”&lt;/i&gt;, this white-walled, minimalist cafe offers a unique experience. No chairs — just a clean, open space where visitors sit on the wooden steps and enjoy simple drinks. Try their signature latte or chai, and enjoy the peaceful, contemplative vibe.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;4. Café Sarasa Nishijin&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Once a traditional bathhouse, this quirky cafe has retained many of its &lt;b&gt;original features&lt;/b&gt;, including tiled walls and high ceilings. Located in the Nishijin district, it serves a &lt;i&gt;variety of delicious lunch plates and desserts&lt;/i&gt;. A great place to relax and feel Kyoto's old-meets-new charm.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;5. Arabica Arashiyama&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;While Arabica is now a global name, their Arashiyama branch remains a hidden gem, especially early in the morning. With views of the Katsura River and bamboo groves, it’s an &lt;b&gt;Instagram-worthy location&lt;/b&gt; with some of the smoothest coffee in town. Go for their famous &lt;i&gt;Spanish Latte&lt;/i&gt; and take in the scenery.&lt;/p&gt;
+
+  &lt;h3&gt;&lt;u&gt;Bonus Tips:&lt;/u&gt;&lt;/h3&gt;
+  &lt;ul&gt;
+    &lt;li&gt;&lt;b&gt;Go early&lt;/b&gt; — many of these cafes get busy fast, especially on weekends.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Bring cash&lt;/b&gt; — not all places accept credit cards.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Respect local customs&lt;/b&gt; — speak softly and avoid lingering too long if it’s crowded.&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;p&gt;Whether you're a coffee connoisseur or just looking for a quiet place to reflect, these &lt;i&gt;hidden cafes in Kyoto&lt;/i&gt; offer something magical. Don’t just visit the city — sip, savor, and &lt;b&gt;experience it one cup at a time&lt;/b&gt;.&lt;/p&gt;
+&quot;,
+0, '2025-05-10 10:00:00', '2025-05-12 08:30:00'),
+
+(2, 2, 'Melbourne Sweet Tooth Tour',
+&quot;&lt;h1&gt;&lt;u&gt;Melbourne Sweet Tooth Tour&lt;/u&gt;&lt;/h1&gt;
+
+  &lt;p&gt;If you have a &lt;b&gt;sweet tooth&lt;/b&gt; and you're in Melbourne, you're in luck. This city is a &lt;i&gt;dessert lover’s paradise&lt;/i&gt;, offering everything from traditional Aussie treats to modern fusion creations. Whether you're strolling through laneways or hanging out in hip neighborhoods, there’s always a delicious indulgence waiting to be discovered. Join us on a &lt;b&gt;Melbourne Sweet Tooth Tour&lt;/b&gt; that will leave your taste buds tingling!&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;1. Lune Croissanterie&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Located in Fitzroy, &lt;b&gt;Lune Croissanterie&lt;/b&gt; is &lt;i&gt;world-famous for a reason&lt;/i&gt;. Their buttery, flaky croissants are baked with scientific precision and artistic flair. Go early — lines form quickly, and the almond croissant sells out fast. &lt;i&gt;Don’t miss their seasonal specials&lt;/i&gt; either!&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;2. Pidapipó Gelateria&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;If you're craving &lt;b&gt;authentic Italian gelato&lt;/b&gt;, head to Pidapipó on Lygon Street. With creamy textures and bold flavors like pistachio, ricotta fig, and Nutella swirl, it’s a scoop of pure happiness. Bonus: their &lt;i&gt;chocolate fountain over gelato cones&lt;/i&gt; is a must-try for any sweet addict.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;3. Bibelot&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;This South Melbourne patisserie is a &lt;i&gt;temple of indulgence&lt;/i&gt;. Bibelot offers exquisite cakes, artisan chocolates, and handmade gelato all under one roof. Their matcha tart and passionfruit mousse cake are crowd favorites. It’s an &lt;b&gt;elegant stop for both taste and presentation&lt;/b&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;4. Agathé Pâtisserie&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Hidden inside South Melbourne Market, Agathé Pâtisserie is a small but mighty bakery. Their &lt;i&gt;cruffins&lt;/i&gt; — a hybrid of croissant and muffin — are filled with everything from matcha cream to lemon curd. &lt;b&gt;Unique, flaky, and unforgettable&lt;/b&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;5. Burch &amp; Purchese Sweet Studio&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;For a modern twist on desserts, this studio in South Yarra creates &lt;b&gt;edible works of art&lt;/b&gt;. Known for intricate layered cakes, marshmallows, and quirky flavor combinations like chocolate, rosemary, and olive oil, it’s a &lt;i&gt;lab for dessert innovation&lt;/i&gt;. A dream for the adventurous palate.&lt;/p&gt;
+
+  &lt;h3&gt;&lt;u&gt;Pro Tips for the Tour:&lt;/u&gt;&lt;/h3&gt;
+  &lt;ul&gt;
+    &lt;li&gt;&lt;b&gt;Bring friends&lt;/b&gt; — sharing means you can try more treats!&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Stay hydrated&lt;/b&gt; — all that sugar needs some balance.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Take photos&lt;/b&gt; — these desserts are as beautiful as they are tasty.&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;p&gt;Melbourne’s dessert scene is vibrant, creative, and absolutely delicious. Whether you're into flaky pastries, frozen delights, or experimental sweets, there's something here for every craving. So go ahead — &lt;b&gt;embrace your sweet side&lt;/b&gt; and take a bite out of Melbourne’s best!&lt;/p&gt;
+&quot;,
+0, '2025-05-11 14:20:00', '2025-05-15 08:30:00'),
+
+(3, 3, 'Backpacking the South Island of NZ',
+&quot;&lt;h1&gt;&lt;u&gt;Backpacking the South Island of NZ&lt;/u&gt;&lt;/h1&gt;
+
+  &lt;p&gt;Backpacking through New Zealand’s South Island is an &lt;b&gt;unforgettable experience&lt;/b&gt;. Known for its dramatic landscapes, welcoming locals, and endless adventure opportunities, this region is perfect for anyone looking to connect with nature and travel on a budget. From snow-capped mountains to turquoise lakes, here's how to make the most of your South Island adventure.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;Must-See Destinations&lt;/u&gt;&lt;/h2&gt;
+  &lt;ul&gt;
+    &lt;li&gt;&lt;b&gt;Queenstown&lt;/b&gt; – The &lt;i&gt;adventure capital of the world&lt;/i&gt;, offering everything from bungee jumping to lake cruises.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Fiordland National Park&lt;/b&gt; – Home to &lt;i&gt;Milford Sound&lt;/i&gt; and &lt;i&gt;Doubtful Sound&lt;/i&gt;, these fjords are absolutely breathtaking.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Wanaka&lt;/b&gt; – A more relaxed alternative to Queenstown with amazing hikes like &lt;i&gt;Roy’s Peak&lt;/i&gt;.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Lake Tekapo&lt;/b&gt; – Famous for its &lt;b&gt;bright turquoise water&lt;/b&gt; and the Church of the Good Shepherd.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Kaikoura&lt;/b&gt; – A coastal town perfect for &lt;i&gt;whale watching&lt;/i&gt; and enjoying fresh seafood.&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;h2&gt;&lt;u&gt;Budget Tips&lt;/u&gt;&lt;/h2&gt;
+  &lt;ul&gt;
+    &lt;li&gt;&lt;b&gt;Use a campervan&lt;/b&gt; – Save on accommodation and enjoy the freedom to park in stunning locations.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Shop at supermarkets&lt;/b&gt; – Cooking your own meals helps stretch your travel funds.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Join backpacker Facebook groups&lt;/b&gt; – Find rideshares and local travel tips.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Get a DOC Campsite Pass&lt;/b&gt; – Access basic campgrounds for low fees.&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;h2&gt;&lt;u&gt;Top Activities&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Don’t miss out on the &lt;b&gt;iconic hikes&lt;/b&gt; such as the Routeburn Track or Hooker Valley Track in Aoraki/Mt Cook National Park. If you're into thrill-seeking, try &lt;i&gt;skydiving, canyoning, or white-water rafting&lt;/i&gt;. Nature lovers will adore the glowworm caves in Te Anau and the penguin colonies in Oamaru.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;Final Thoughts&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;The South Island is a place where you can truly unplug and experience the raw beauty of nature. Whether you're chasing adrenaline, relaxing in quiet lakeside towns, or exploring national parks, this journey will leave you with memories to last a lifetime. So pack light, travel smart, and &lt;b&gt;let the South Island take your breath away&lt;/b&gt;.&lt;/p&gt;
+&quot;,
+0, '2025-05-13 09:00:00', '2025-05-15 11:45:00'),
+
+(4, 4, 'Best Spicy Dishes in Bangkok',
+&quot;&lt;h1&gt;&lt;u&gt;Best Spicy Dishes in Bangkok&lt;/u&gt;&lt;/h1&gt;
+
+  &lt;p&gt;If there’s one thing Bangkok is famous for beyond its vibrant markets and temples, it's the &lt;b&gt;fiery and flavorful cuisine&lt;/b&gt;. From street stalls to local eateries, the city offers a treasure trove of spicy dishes that will ignite your taste buds. Whether you're a chili fan or a culinary adventurer, here are the &lt;b&gt;top spicy dishes you must try&lt;/b&gt; in Bangkok.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;1. Som Tum (Spicy Green Papaya Salad)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;This classic Thai salad is made with &lt;i&gt;shredded green papaya, chili, garlic, lime, and fish sauce&lt;/i&gt;. It's sweet, sour, salty, and incredibly spicy — especially if you order it “Thai style.” Best enjoyed with sticky rice or grilled chicken on the side.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;2. Tom Yum Goong (Spicy Shrimp Soup)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Tom Yum is one of Thailand’s most iconic soups. &lt;b&gt;Packed with lemongrass, galangal, kaffir lime leaves, and red chilies&lt;/b&gt;, it offers a perfect balance of heat and citrus. The shrimp version is the most popular, but there are also chicken and vegetarian options.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;3. Pad Kra Pao (Holy Basil Stir Fry)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Often considered a go-to lunch dish for locals, Pad Kra Pao combines minced meat (usually pork or chicken) stir-fried with garlic, chili, and holy basil. Served with rice and topped with a &lt;i&gt;crispy fried egg&lt;/i&gt;, it’s spicy, savory, and deeply satisfying.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;4. Gaeng Daeng (Red Curry)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;This creamy yet spicy curry is made with &lt;b&gt;red chili paste, coconut milk, meat, and Thai herbs&lt;/b&gt;. It’s rich, aromatic, and best served with a bowl of jasmine rice. Each restaurant has its own twist, so don’t hesitate to try more than one version!&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;5. Laab (Spicy Minced Meat Salad)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Originating from northeastern Thailand, Laab is a &lt;i&gt;zesty minced meat dish&lt;/i&gt; tossed with lime juice, chili flakes, fresh herbs, and toasted rice powder. It’s fresh, spicy, and slightly nutty — a great option for those who enjoy a textural punch.&lt;/p&gt;
+
+  &lt;h3&gt;&lt;u&gt;Tips for Spicy Food Lovers:&lt;/u&gt;&lt;/h3&gt;
+  &lt;ul&gt;
+    &lt;li&gt;&lt;b&gt;Start small&lt;/b&gt; – Thai spicy can be intense, so ask for “mild” if you’re unsure.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Cool down with rice&lt;/b&gt; – Rice helps balance the heat and complements every dish.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Have Thai iced tea&lt;/b&gt; – The sweetness and creaminess help soothe the burn.&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;p&gt;Bangkok's spicy dishes are more than just heat — they are &lt;i&gt;layers of flavor and cultural expression&lt;/i&gt;. Whether you're eating at a street cart or a local kitchen, these dishes will give you a real taste of Thai fire. &lt;b&gt;Just don’t forget to bring tissues!&lt;/b&gt;&lt;/p&gt;
+&quot;,
+0, '2025-05-14 12:00:00', '2025-05-25 08:30:00'),
+
+(5, 5, 'How to Travel Japan on a Budget',
+&quot;&lt;h1&gt;&lt;u&gt;How to Travel Japan on a Budget&lt;/u&gt;&lt;/h1&gt;
+
+  &lt;p&gt;Japan is often seen as an expensive destination, but with smart planning, you can explore its rich culture, cutting-edge cities, and peaceful countryside &lt;b&gt;without breaking the bank&lt;/b&gt;. From transportation to meals, here’s how to &lt;b&gt;travel Japan on a budget&lt;/b&gt; while still enjoying a truly unforgettable experience.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;1. Use Budget Transportation&lt;/u&gt;&lt;/h2&gt;
+  &lt;ul&gt;
+    &lt;li&gt;&lt;b&gt;JR Pass&lt;/b&gt; – Ideal for long-distance travel. This pass offers &lt;i&gt;unlimited rides on Japan Rail lines&lt;/i&gt;, including most Shinkansen (bullet trains).&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Highway Buses&lt;/b&gt; – Great for overnight trips between cities like Tokyo, Kyoto, and Osaka. Comfortable and much cheaper than trains.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;IC Cards&lt;/b&gt; – Prepaid cards like Suica or Pasmo make it easy and cheaper to ride subways and buses.&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;h2&gt;&lt;u&gt;2. Stay in Budget Accommodations&lt;/u&gt;&lt;/h2&gt;
+  &lt;ul&gt;
+    &lt;li&gt;&lt;b&gt;Hostels and Guesthouses&lt;/b&gt; – Clean, friendly, and often come with &lt;i&gt;free breakfast or kitchen access&lt;/i&gt;.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Capsule Hotels&lt;/b&gt; – A unique Japanese experience that’s perfect for solo travelers.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Business Hotels&lt;/b&gt; – Compact but comfortable rooms with &lt;i&gt;affordable rates and great locations&lt;/i&gt;.&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;h2&gt;&lt;u&gt;3. Eat Cheap (and Delicious)&lt;/u&gt;&lt;/h2&gt;
+  &lt;ul&gt;
+    &lt;li&gt;&lt;b&gt;Convenience Stores&lt;/b&gt; – Lawson, FamilyMart, and 7-Eleven offer &lt;i&gt;fresh, cheap meals&lt;/i&gt; like onigiri, bento, and noodles.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Standing Sushi Bars&lt;/b&gt; – Affordable sushi that doesn’t skimp on quality.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Chain Restaurants&lt;/b&gt; – Try Sukiya, Matsuya, or Coco Ichibanya for &lt;b&gt;budget-friendly local dishes&lt;/b&gt;.&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;h2&gt;&lt;u&gt;4. Free and Low-Cost Attractions&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Many of Japan’s most beautiful places are free to enjoy. Explore &lt;b&gt;temples, shrines, gardens, and scenic hikes&lt;/b&gt; without paying an entrance fee. Major cities also offer &lt;i&gt;free observation decks&lt;/i&gt;, public museums, and cultural festivals.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;5. Pocket WiFi or SIM Card&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;To avoid expensive roaming fees, rent a &lt;b&gt;pocket WiFi&lt;/b&gt; or buy a &lt;i&gt;prepaid SIM card&lt;/i&gt; at the airport or online before arrival. Staying connected helps with directions, translations, and transport apps.&lt;/p&gt;
+
+  &lt;h3&gt;&lt;u&gt;Bonus Budget Tips:&lt;/u&gt;&lt;/h3&gt;
+  &lt;ul&gt;
+    &lt;li&gt;&lt;b&gt;Travel off-season&lt;/b&gt; – Spring and autumn are beautiful, but winter (excluding New Year) offers lower prices.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Get a coin locker&lt;/b&gt; – Store your luggage for cheap while you explore freely.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Use 100-yen shops&lt;/b&gt; – They sell everything from snacks to souvenirs!&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;p&gt;Traveling Japan doesn’t have to be expensive. With some smart choices and a little flexibility, you can experience the beauty, kindness, and excitement of Japan &lt;b&gt;on a shoestring&lt;/b&gt;. &lt;i&gt;Your budget adventure awaits!&lt;/i&gt;&lt;/p&gt;
+&quot;,
+0, '2025-05-15 16:30:00', '2025-05-28 08:30:00'),
+
+(6, 1, 'A Local Guide to Seoul Street Food',
+&quot;&lt;h1&gt;&lt;u&gt;A Local Guide to Seoul Street Food&lt;/u&gt;&lt;/h1&gt;
+
+  &lt;p&gt;Seoul is a paradise for food lovers, and its street food scene is a &lt;b&gt;must-experience&lt;/b&gt; for anyone visiting the city. From spicy, crispy, and sweet to savory and chewy, the streets of Seoul are filled with &lt;i&gt;mouthwatering delights&lt;/i&gt; that reflect the city’s rich culture and creativity. Here’s a &lt;b&gt;local guide to must-try Seoul street foods&lt;/b&gt; that will keep you coming back for more.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;1. Tteokbokki (Spicy Rice Cakes)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;This iconic Korean snack is made of &lt;i&gt;chewy rice cakes&lt;/i&gt; in a fiery red chili sauce. Often served with fish cakes and boiled eggs, Tteokbokki is &lt;b&gt;sweet, spicy, and comforting&lt;/b&gt;. Find it everywhere from markets to food carts along shopping streets.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;2. Hotteok (Sweet Pancake)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Perfect on a chilly day, Hotteok is a &lt;b&gt;warm, fried pancake&lt;/b&gt; filled with brown sugar, cinnamon, and crushed nuts. The crispy outside and gooey inside make it an &lt;i&gt;irresistible sweet treat&lt;/i&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;3. Gimbap (Korean Seaweed Rice Roll)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Often called “Korean sushi,” Gimbap is a &lt;b&gt;healthy and portable snack&lt;/b&gt; made with rice, vegetables, and sometimes meat or tuna, all rolled in seaweed. It’s affordable, filling, and great for travelers on the go.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;4. Eomuk (Fish Cake Skewers)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Found bubbling in broth at most street stalls, these &lt;i&gt;warm and savory fish cakes&lt;/i&gt; are served on skewers with a side of hot soup. Perfect for quick bites between shopping or sightseeing.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;5. Bungeoppang (Fish-Shaped Pastry)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;This cute, fish-shaped pastry is filled with &lt;b&gt;sweet red bean paste&lt;/b&gt; or custard. Crispy on the outside and soft inside, it’s one of Seoul’s most beloved wintertime snacks.&lt;/p&gt;
+
+  &lt;h3&gt;&lt;u&gt;Where to Go:&lt;/u&gt;&lt;/h3&gt;
+  &lt;ul&gt;
+    &lt;li&gt;&lt;b&gt;Myeongdong&lt;/b&gt; – A street food heaven filled with trendy and classic treats.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Gwangjang Market&lt;/b&gt; – A traditional food market where you can eat like a local.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Hongdae&lt;/b&gt; – Young, creative vibes with lots of unique dessert stalls and snacks.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Noryangjin Fish Market&lt;/b&gt; – For fresh seafood prepared right on the spot.&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;h3&gt;&lt;u&gt;Tips for First-Timers:&lt;/u&gt;&lt;/h3&gt;
+  &lt;ul&gt;
+    &lt;li&gt;&lt;b&gt;Bring cash&lt;/b&gt; – Most stalls only accept Korean won.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Go hungry&lt;/b&gt; – There's so much to try, you'll want to sample everything!&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Try something new&lt;/b&gt; – Don’t be afraid to order what the locals are eating.&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;p&gt;Seoul’s street food isn’t just about eating — it’s about &lt;i&gt;exploring culture through flavor&lt;/i&gt;. Whether you’re craving something sweet, spicy, or savory, these vibrant streets will keep your taste buds excited and your stomach full. &lt;b&gt;Come with curiosity and leave with a full heart (and belly)!&lt;/b&gt;&lt;/p&gt;
+&quot;,
+0, '2025-05-16 10:10:00', '2025-05-30 08:30:00'),
+
+(7, 2, 'Hiking Trails Near Auckland You Should not Miss',
+&quot; &lt;h1&gt;&lt;u&gt;Hiking Trails Near Auckland You Should Not Miss&lt;/u&gt;&lt;/h1&gt;
+
+  &lt;p&gt;Just beyond the urban buzz of Auckland lies a world of &lt;b&gt;lush forests, coastal views, and volcanic landscapes&lt;/b&gt;. Whether you're a casual walker or an adventurous hiker, there’s a trail nearby that’s perfect for you. If you love nature and need a quick escape from the city, here are the &lt;b&gt;top hiking trails near Auckland you should not miss&lt;/b&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;1. Hunua Falls Track&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Located about 50 minutes from Auckland CBD, this short loop leads to the stunning &lt;b&gt;Hunua Falls&lt;/b&gt;. Surrounded by native bush, it’s a perfect spot for a peaceful picnic or a light walk. &lt;i&gt;Easy, scenic, and great for families&lt;/i&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;2. Rangitoto Island Summit Track&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Take a ferry and hike to the summit of Rangitoto, Auckland’s youngest volcano. The trail is &lt;b&gt;moderate with rugged lava fields&lt;/b&gt; and rewarding panoramic views of the Hauraki Gulf at the top. Don’t forget to explore the &lt;i&gt;lava caves&lt;/i&gt; on the way back!&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;3. Waitākere Ranges – Kitekite Falls Track&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;This forest trail in Piha is a must-do. It winds through dense native bush and ends at a beautiful, multi-tiered waterfall. The &lt;b&gt;view from the base of Kitekite Falls&lt;/b&gt; is magical, and you can even swim in the pool below. &lt;i&gt;Don’t forget your camera&lt;/i&gt;!&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;4. Duder Regional Park Coastal Track&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;For a more coastal feel, head southeast to Duder Regional Park. The track offers &lt;b&gt;sweeping views of the coastline&lt;/b&gt;, open farmland, and native forest. Ideal for sunrise hikes or a quiet weekend escape. &lt;i&gt;Pack snacks and enjoy the open space&lt;/i&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;5. Mount Eden (Maungawhau)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Right in the heart of Auckland, Mount Eden offers a short hike with a big reward. This extinct volcano features a &lt;b&gt;giant crater and panoramic city views&lt;/b&gt;. Great for a quick evening hike or morning stroll. &lt;i&gt;Very accessible by public transport&lt;/i&gt;.&lt;/p&gt;
+
+  &lt;h3&gt;&lt;u&gt;Tips for Hiking Near Auckland:&lt;/u&gt;&lt;/h3&gt;
+  &lt;ol&gt;
+    &lt;li&gt;&lt;b&gt;Check track conditions&lt;/b&gt; – Some tracks in the Waitākere Ranges may be closed for kauri dieback protection.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Wear proper shoes&lt;/b&gt; – Trails can be muddy or steep in parts.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Bring water and sunscreen&lt;/b&gt; – Even short hikes can get hot and dry.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Respect the land&lt;/b&gt; – Stay on marked paths and carry out your rubbish.&lt;/li&gt;
+  &lt;/ol&gt;
+
+  &lt;p&gt;Whether you're chasing waterfalls or volcano views, these hikes offer a refreshing way to experience the natural beauty of Tāmaki Makaurau. With so many trails just a short drive or ferry ride away, there’s no excuse not to lace up your boots and &lt;b&gt;explore the outdoors&lt;/b&gt;. &lt;i&gt;See you on the trail!&lt;/i&gt;&lt;/p&gt;
+&quot;,
+0, '2025-05-17 08:00:00', '2025-05-18 13:15:00'),
+
+(8, 3, &quot;Hidden Historical Gems in London&quot;,
+&quot;&lt;p&gt;London is known for its iconic landmarks like Big Ben and Buckingham Palace, but there’s a deeper side to this historic city that many visitors miss. From secret churches to ancient pubs, here are &lt;b&gt;hidden historical gems in London&lt;/b&gt; that deserve a spot on your itinerary.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;1. Postman’s Park&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Located near St Paul’s Cathedral, this peaceful park is home to the &lt;i&gt;Memorial to Heroic Self Sacrifice&lt;/i&gt; — a wall commemorating ordinary people who died saving others. It’s a &lt;b&gt;quiet, moving tribute&lt;/b&gt; that reflects London’s human stories.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;2. The Seven Noses of Soho&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;A quirky scavenger hunt awaits! These sculpted noses hidden around Soho are part of an &lt;b&gt;urban art project&lt;/b&gt; by Rick Buckley. Locals believe finding all seven brings good luck. &lt;i&gt;It’s a fun way to explore the area’s history and eccentricities&lt;/i&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;3. The Charterhouse&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Dating back to the 14th century, this former monastery and plague pit is now a museum. Take a guided tour to hear about &lt;b&gt;Black Death burials, Tudor royalty, and WW2 bombings&lt;/b&gt;. It’s a &lt;i&gt;hidden gem for history buffs&lt;/i&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;4. The Old Operating Theatre Museum&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Tucked into the attic of a church near London Bridge, this is Europe’s oldest surviving surgical theatre. Explore &lt;b&gt;Victorian medical instruments&lt;/b&gt; and learn how surgery was performed before anesthesia. &lt;i&gt;Fascinating and a little creepy&lt;/i&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;5. Wilton’s Music Hall&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;The oldest surviving music hall in the world, Wilton’s has seen performances since the 1850s. Now restored, it hosts live shows in a delightfully atmospheric space. &lt;b&gt;History meets culture in this East London treasure&lt;/b&gt;.&lt;/p&gt;
+
+  &lt;h3&gt;&lt;u&gt;Local Tips:&lt;/u&gt;&lt;/h3&gt;
+  &lt;ul&gt;
+    &lt;li&gt;&lt;b&gt;Use the Tube smartly&lt;/b&gt; – Many hidden spots are walkable from central stations.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Look up&lt;/b&gt; – Some architectural surprises are easy to miss at street level.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Join local walking tours&lt;/b&gt; – Guides often highlight stories not in the guidebooks.&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;p&gt;Beyond the famous sights, London offers a tapestry of forgotten tales and preserved secrets. Explore these &lt;i&gt;hidden historical corners&lt;/i&gt; and discover a different side of the city that most tourists never see. &lt;b&gt;History is everywhere — if you know where to look!&lt;/b&gt;&lt;/p&gt;
+&quot;,
+0, '2025-05-18 17:20:00', '2025-05-25 08:30:00'),
+
+(9, 4, 'Most Beautiful Villages in Southern France',
+&quot;&lt;h1&gt;&lt;u&gt;Most Beautiful Villages in Southern France&lt;/u&gt;&lt;/h1&gt;
+
+  &lt;p&gt;Southern France is known for its lavender fields, sunshine, and relaxed lifestyle — but its true charm lies in the &lt;b&gt;small, picturesque villages&lt;/b&gt; that dot the countryside. These places offer a glimpse of traditional life, stunning views, and &lt;i&gt;authentic French culture&lt;/i&gt;. Here are &lt;b&gt;5 must-visit villages in the South of France&lt;/b&gt; you shouldn’t miss.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;1. Gordes&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Perched on a hill in the Luberon region, Gordes is a &lt;b&gt;stone-built masterpiece&lt;/b&gt;. Wander its winding alleys, visit the 11th-century castle, and enjoy panoramic views of the Provencal landscape. &lt;i&gt;Don’t miss the Tuesday market!&lt;/i&gt;&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;2. Èze&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Located between Nice and Monaco, Èze is a medieval village with &lt;i&gt;cobblestone paths and exotic gardens&lt;/i&gt;. Climb to the top for stunning views of the Mediterranean Sea. &lt;b&gt;It's like stepping into a fairytale&lt;/b&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;3. Roussillon&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Famous for its &lt;b&gt;red ochre cliffs and buildings&lt;/b&gt;, Roussillon stands out with its vibrant color palette. The village sits atop a hill, surrounded by lavender fields and vineyards. &lt;i&gt;A photographer’s dream&lt;/i&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;4. Saint-Cirq-Lapopie&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Overlooking the Lot River, this &lt;b&gt;cliffside village&lt;/b&gt; is often listed among the most beautiful in France. Its historic homes, art galleries, and quiet lanes make it ideal for a peaceful escape. &lt;i&gt;It's like living in a painting&lt;/i&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;5. Collioure&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;A seaside gem near the Spanish border, Collioure is known for its &lt;b&gt;brightly colored buildings, Catalan influence, and fresh seafood&lt;/b&gt;. The town inspired artists like Matisse and is perfect for both beach lovers and art fans.&lt;/p&gt;
+
+  &lt;h3&gt;&lt;u&gt;Tips for Exploring Southern French Villages:&lt;/u&gt;&lt;/h3&gt;
+  &lt;ul&gt;
+    &lt;li&gt;&lt;b&gt;Rent a car&lt;/b&gt; – Public transport is limited, and driving lets you explore at your own pace.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Travel in shoulder season&lt;/b&gt; – Late spring and early autumn offer fewer crowds and better prices.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Learn a few French phrases&lt;/b&gt; – Locals appreciate the effort and respond warmly.&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;p&gt;Southern France’s villages are more than just scenic — they’re full of life, history, and warmth. Whether you're sipping wine in a shaded courtyard or walking along a cliffside trail, these destinations offer a true taste of &lt;b&gt;la vie française&lt;/b&gt;. &lt;i&gt;Slow down and enjoy the magic of the French countryside&lt;/i&gt;.&lt;/p&gt;
+&quot;,
+0, '2025-05-19 11:30:00', '2025-06-10 08:30:00'),
+
+(10, 5, 'Top 5 Scenic Road Trips in the USA',
+&quot;&lt;p&gt;The United States is made for road tripping. With vast landscapes, iconic highways, and diverse regions, there’s no better way to explore the country than by car. Whether you're into mountains, deserts, or coastal views, here are the &lt;b&gt;top 5 scenic road trips in the USA&lt;/b&gt; that every traveler should experience.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;1. Pacific Coast Highway (California)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Also known as Highway 1, this &lt;b&gt;coastal masterpiece&lt;/b&gt; runs from San Francisco to Los Angeles, with dramatic cliffs, ocean views, and charming towns like Big Sur and Carmel-by-the-Sea. &lt;i&gt;Ideal for beach lovers and photographers&lt;/i&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;2. Blue Ridge Parkway (Virginia to North Carolina)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Known as “America’s Favorite Drive,” this route winds through the Appalachian Highlands, offering &lt;b&gt;breathtaking views of rolling hills, forests, and fall foliage&lt;/b&gt;. Perfect for a &lt;i&gt;peaceful, nature-filled journey&lt;/i&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;3. Route 66 (Chicago to Santa Monica)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;This legendary highway is a &lt;b&gt;symbol of American freedom and nostalgia&lt;/b&gt;. It passes through eight states and offers a taste of vintage Americana, roadside diners, and quirky attractions. &lt;i&gt;A true bucket-list trip&lt;/i&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;4. Going-to-the-Sun Road (Montana)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;Located in Glacier National Park, this alpine road features &lt;b&gt;snow-capped peaks, glacial lakes, and waterfalls&lt;/b&gt;. It’s only open in summer, and every twist and turn is packed with jaw-dropping scenery. &lt;i&gt;Bring your camera and a sense of adventure&lt;/i&gt;.&lt;/p&gt;
+
+  &lt;h2&gt;&lt;u&gt;5. Overseas Highway (Florida Keys)&lt;/u&gt;&lt;/h2&gt;
+  &lt;p&gt;This tropical road trip connects Miami to Key West via a series of bridges over turquoise waters. The 7 Mile Bridge is a highlight. Expect &lt;b&gt;palm trees, island vibes, and epic sunsets&lt;/b&gt;. &lt;i&gt;Great for a sunny getaway&lt;/i&gt;.&lt;/p&gt;
+
+  &lt;h3&gt;&lt;u&gt;Road Trip Tips:&lt;/u&gt;&lt;/h3&gt;
+  &lt;ul&gt;
+    &lt;li&gt;&lt;b&gt;Plan your stops&lt;/b&gt; – Use apps like Roadtrippers to find hidden gems along the way.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Pack essentials&lt;/b&gt; – Snacks, water, playlists, and a paper map in case GPS fails.&lt;/li&gt;
+    &lt;li&gt;&lt;b&gt;Check the weather&lt;/b&gt; – Conditions can change quickly, especially in mountainous areas.&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;p&gt;America’s roads are full of wonder, surprise, and unforgettable beauty. Whether you're chasing coastlines or mountains, these scenic drives deliver more than just views — they offer freedom, connection, and a taste of true American spirit. &lt;b&gt;Hit the road and let the journey unfold!&lt;/b&gt;&lt;/p&gt;
+&quot;,
+0, '2025-05-20 19:00:00', '2025-05-21 08:00:00'),
+
+(11, 1, 'A Weekend Café Crawl in Paris',
+'&lt;p&gt;Measure too maybe off question source. Wrong section town deal movement out stay lot. Parent do ten after those scientist. Medical effort assume teacher wall. Significant his himself clearly very. Expert stop area along individual. Three own bank recognize special good along. Hit another likely character allow pay picture. Record power crime situation.&lt;/p&gt;&lt;p&gt;Thing particular level place. Practice wide require fast support when. Son true their race special million. Although hot he couple ground. Away and various main too war project occur. Director simply those physical maybe. Information figure box international not type very. As indeed choose west social issue. Air try while reveal bad audience.&lt;/p&gt;&lt;p&gt;Generation concern store. Standard audience throw debate daughter. Security fall ready usually. Teacher cost both general where. Agreement decade friend which. View when player contain year. Mouth film heavy chair. Source firm drug senior.&lt;/p&gt;&lt;p&gt;Information animal car after back available. Federal indicate unit opportunity fear great. Know hard we around impact. While top kid he weight before. Someone everybody newspaper read. Up control instead company where future model. Leg PM low data ability recognize.&lt;/p&gt;&lt;p&gt;Account fear shoulder pick nation choose relationship. Begin marriage which myself if place again. This American either moment ok. Know second government the pull cultural. Along society figure future. Teacher three seven attention team executive care. Phone most improve play idea sing small. Kind nothing case but building. Opportunity cause property government line indeed. Major maybe manage when know central many. Democratic green hospital year suffer without rather bank.&lt;/p&gt;&lt;p&gt;Guess break about. Their record road dinner seem. Course its respond himself former. Challenge value challenge firm decade cost. Smile home southern hope detail cultural. Only anyone home doctor be. Hair sea quality do. Partner relate mention expect there.&lt;/p&gt;&lt;p&gt;Learn place might what western upon. Ok majority region democratic entire analysis. Glass face according as. Quite wife however TV law fund. Paper beat five movie. Eight miss couple bag thank generation. Economy rock feeling might his. Gas Republican and various authority leave right.&lt;/p&gt;&lt;p&gt;Without leave brother bank better she. This degree partner stand next though. Always Congress majority campaign that various. Yes blue tonight particular smile represent. Method left plant evening admit past.&lt;/p&gt;&lt;p&gt;Run eat expect save. Score middle teacher. His evening wife north. Push region produce develop story. Ask film force health lose.&lt;/p&gt;&lt;p&gt;Case administration measure happen. Speech theory choice. Member baby share sit. Notice receive degree run staff service government. Car material truth pattern ago other majority final. New clear these speak say. Finish summer else page region start size. Want decade firm section economic television. Employee public figure ground much. Character against physical agency and difficult president at.&lt;/p&gt;',
+0, '2025-05-25 10:00:00', '2025-06-10 08:30:00'),
+
+(12, 2, 'Churros &amp; Chatter: My Spanish Dessert Journey',
+'&lt;p&gt;Form style star east. What to sea. Collection bad until our per leader change. Always future scene heavy personal threat many group. Leader medical class send. Establish manage hotel financial too nearly.&lt;/p&gt;&lt;p&gt;Now energy rather lay return identify many. Event yet effect. Reflect upon yet seven several might history strong. Decade not forget why under. Purpose mouth then class test check suffer star.&lt;/p&gt;&lt;p&gt;North weight guy. Fall manager idea issue color small notice kind. Upon we lose water stand single. Could nature interest wear community college probably church. Walk place myself his. Entire expect investment yard responsibility watch. Money fish garden relationship it center accept. Choice produce type none guess we no. Pm sometimes set tonight gun word. Quite piece physical market.&lt;/p&gt;&lt;p&gt;Through ever war unit back large season. Tell time special beyond could key assume. Play wait education think similar particular. Film manage several dark. Hit simple personal home they although. Great notice north everything state huge TV. Among not girl above.&lt;/p&gt;&lt;p&gt;Provide likely fire subject. Fire town worker. Image central challenge term memory. By care lose politics. Role mind statement. Hold conference son spend ball company enter son.&lt;/p&gt;&lt;p&gt;Site military lead travel series. Need although one political almost serious stand. Cover social particularly speech. City four pretty live new myself star. Able simple billion parent now from. Mention would technology budget first age. Affect though cover including. Recognize someone treatment over.&lt;/p&gt;&lt;p&gt;Truth unit impact key page per. Public none sound include air. Couple hold group but go. Identify real to follow. Second reason live teach movie I situation. Agree middle student bag grow.&lt;/p&gt;&lt;p&gt;Why child might source where a front. Receive civil single city quite wall various. Watch lot thousand question analysis drive. Forget whom goal clear inside. Theory case north add us accept.&lt;/p&gt;&lt;p&gt;Yourself affect station member. Another understand of. Sing purpose here ago. Nothing rather represent two hair describe. Authority imagine probably whom it job. High trouble drive loss turn attorney education. Those head against particularly listen. Everybody particularly test hospital personal.&lt;/p&gt;',
+0, '2025-05-26 10:00:00', '2025-06-10 08:30:00'),
+(13, 1, 'A Weekend in New York: Food, Art &amp; Hidden Gems',
+'&lt;h1&gt;A Weekend in New York: Food, Art &amp; Hidden Gems&lt;/h1&gt;
+&lt;p&gt;New York City is a place that never stops moving, but within the hustle lies a treasure trove of quiet corners, incredible meals, and unforgettable moments.&lt;/p&gt;
+
+&lt;h2&gt;Morning at Central Park&lt;/h2&gt;
+&lt;p&gt;There’s no better way to start your day than a walk through &lt;strong&gt;Central Park&lt;/strong&gt;. Whether you’re renting a bike or simply strolling through &lt;em&gt;The Mall&lt;/em&gt;, it’s a peaceful contrast to the busy avenues that surround it.&lt;/p&gt;
+
+&lt;h2&gt;Art and Culture&lt;/h2&gt;
+&lt;p&gt;The &lt;strong&gt;Metropolitan Museum of Art&lt;/strong&gt; is a world in itself. From Egyptian tombs to Van Gogh masterpieces, you could spend hours here. For a modern twist, head downtown to the &lt;em&gt;Whitney Museum of American Art&lt;/em&gt;.&lt;/p&gt;
+
+&lt;h2&gt;Where to Eat&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Bagels, pizza, and rooftop cocktails&lt;/strong&gt; — NYC’s food scene is legendary for a reason. I grabbed breakfast at &lt;em&gt;Russ &amp; Daughters&lt;/em&gt;, lunch at &lt;em&gt;Joe’s Pizza&lt;/em&gt;, and ended my day with small plates at a rooftop bar in the East Village.&lt;/p&gt;
+
+&lt;h2&gt;Hidden Gems&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Paley Park&lt;/strong&gt; – a pocket-sized oasis with a waterfall wall on 53rd Street.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;The High Line&lt;/strong&gt; – an elevated linear park built on a former rail line.&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Albertine Bookstore&lt;/strong&gt; – a stunning French bookstore inside a mansion.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;New York City rewards curiosity. Don’t just follow the crowds — wander into side streets, try the unknown deli, and speak with the locals. That’s how you really experience the magic.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Have you been to NYC? Share your favorite spots in the comments below!&lt;/em&gt;&lt;/p&gt;',
+0, '2025-06-08 15:00:00', '2025-06-10 08:30:00'),
+(14, 6, 'Brunch Bliss in Brooklyn', &quot;&lt;p&gt;Brunch Bliss in Brooklyn is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-01 00:00:00', '2025-06-10 00:00:00'),
+(15, 6, 'Hidden Cafés of London', &quot;&lt;p&gt;Hidden Cafés of London is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-02 00:00:00', '2025-06-10 00:00:00'),
+(16, 8, 'Sangria &amp; Sunsets in Spain', &quot;&lt;p&gt;Sangria &amp; Sunsets in Spain is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-03 00:00:00', '2025-06-10 00:00:00'),
+(17, 5, 'Fine Dining in Wellington', &quot;&lt;p&gt;Fine Dining in Wellington is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-04 00:00:00', '2025-06-10 00:00:00'),
+(18, 5, 'Dessert Dreams in Madrid', &quot;&lt;p&gt;Dessert Dreams in Madrid is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-05 00:00:00', '2025-06-10 00:00:00'),
+(19, 1, 'Beverage Culture in America', &quot;&lt;p&gt;Beverage Culture in America is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-06 00:00:00', '2025-06-10 00:00:00'),
+(20, 8, 'Café Corners of Christchurch', &quot;&lt;p&gt;Café Corners of Christchurch is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-07 00:00:00','2025-06-10 00:00:00'),
+(21, 5, 'Afternoon Tea in London', &quot;&lt;p&gt;Afternoon Tea in London is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-08 00:00:00', '2025-06-10 00:00:00'),
+(22, 10, 'Espresso in Barcelona', &quot;&lt;p&gt;Espresso in Barcelona is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-09 00:00:00', '2025-06-10 00:00:00'),
+(23, 2, 'NYC Bagel Battle', &quot;&lt;p&gt;NYC Bagel Battle is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-10 00:00:00', '2025-06-10 00:00:00'),
+(24, 6, 'From Tapas to Tiramisu', &quot;&lt;p&gt;From Tapas to Tiramisu is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-05-11 00:00:00','2025-06-09 00:00:00'),
+(25, 5, 'Michelin Nights in New York', &quot;&lt;p&gt;Michelin Nights in New York is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0,'2025-05-11 00:00:00','2025-06-09 00:00:00'),
+(26, 7, &quot;Wellington's Craft Beer Scene&quot;, &quot;&lt;p&gt;Wellington's Craft Beer Scene is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-05-11 00:00:00','2025-06-09 00:00:00'),
+(27, 10, 'Donuts &amp; Downtown L.A.', &quot;&lt;p&gt;Donuts &amp; Downtown L.A. is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-05-11 00:00:00', '2025-06-09 00:00:00'),
+(28, 7, 'Artisan Coffee in Auckland', &quot;&lt;p&gt;Artisan Coffee in Auckland is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-15 00:00:00', '2025-06-09 00:00:00'),
+(29, 10, 'Parisian Mornings vs London Fog', &quot;&lt;p&gt;Parisian Mornings vs London Fog is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-01 00:00:00', '2025-06-09 00:00:00'),
+(30, 9, 'A Sweet Escape to Spain', &quot;&lt;p&gt;A Sweet Escape to Spain is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-06 00:00:00', '2025-06-09 00:00:00'),
+(31, 4, 'Bourbon Trails of Kentucky', &quot;&lt;p&gt;Bourbon Trails of Kentucky is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-01 00:00:00', '2025-06-09 00:00:00'),
+(32, 6, 'Cupcakes &amp; Castles in the UK', &quot;&lt;p&gt;Cupcakes &amp; Castles in the UK is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-06 00:00:00', '2025-06-09 00:00:00'),
+(33, 9, 'Wine &amp; Wonders of Napa', &quot;&lt;p&gt;Wine &amp; Wonders of Napa is an unforgettable experience. Here's what you should try.&lt;/p&gt;&quot;, 0, '2025-06-01 00:00:00', '2025-06-09 00:00:00');
+
+
+
+
+INSERT INTO tags (tag_name)
+VALUES
+('Cafe'), ('Dessert'), ('Spicy'), ('Thailand'), ('New Zealand'), ('Budget Travel'), ('Japan'), ('Foodie'),
+('France'), ('Spain'), ('London'), ('America'), ('Fine Dining'), ('Food'),('Travel'), ('Fine dining');
+
+INSERT INTO article_tags (article_id, tag_id)
+VALUES
+(1, 1),  -- Cafe
+(1, 7),  -- Japan
+(1, 2),
+(2, 2),  -- Dessert
+(3, 5),  -- New Zealand
+(4, 3),  -- Spicy
+(4, 4),  -- Thailand
+(5, 6),  -- Budget Travel
+(5, 7),  -- Japan
+(6, 14), -- Food
+(6, 15), --Travel
+(8, 15),
+(8, 11),
+(9, 9),
+(9, 15),
+(10, 12),
+(10, 15),
+(11, 9), -- France
+(11, 1),  -- Cafe
+(11, 2),
+(12, 10), -- Spain
+(12, 2), -- Dessert
+(13, 12), --America
+(14, 12),
+(15, 11), --London
+(16, 10),
+(17, 16);
+
+INSERT INTO article_images (article_id, image_id, image_url)
+VALUES
+(1, 1,'/uploads/kyoto-cafes.jpg'),
+(3, 1,'/uploads/u24.jpg'),
+(2, 1,'/uploads/milford-sound.jpg'),
+(4, 1,'/uploads/bangkok-spicy.jpg'),
+(5, 1,'/uploads/japan-budget.jpg'),
+(6, 1,'/uploads/u1.jpg'),
+(7, 1,'/uploads/u2.jpg'),
+(8, 1,'/uploads/u3.jpg'),
+(9, 1,'/uploads/u4.jpg'),
+(10, 1,'/uploads/u5.jpg'),
+(11, 1,'/uploads/u6.jpg'),
+(12, 1,'/uploads/u7.jpg'),
+(13, 1,'/uploads/u8.jpg'),
+(14, 1,'/uploads/u9.jpg'),
+(15, 1,'/uploads/u10.jpg'),
+(16, 1,'/uploads/u11.jpg'),
+(17, 1,'/uploads/u12.jpg'),
+(18, 1,'/uploads/u13.jpg'),
+(19, 1,'/uploads/u14.jpg'),
+(20, 1,'/uploads/u15.jpg'),
+(21, 1,'/uploads/u16.jpg'),
+(22, 1,'/uploads/u17.jpg'),
+(23, 1,'/uploads/u18.jpg'),
+(24, 1,'/uploads/u19.jpg'),
+(25, 1,'/uploads/u20.jpg'),
+(26, 1,'/uploads/u21.jpg'),
+(27, 1,'/uploads/u22.jpg'),
+(28, 1,'/uploads/u23.jpg'),
+(29, 1,'/uploads/u20.jpg'),
+(30, 1,'/uploads/u21.jpg'),
+(31, 1,'/uploads/u1.jpg'),
+(32, 1,'/uploads/u2.jpg');
+
+
+
+
+INSERT INTO comments (comment_id, article_id, parent_id, user_id, content, created_dttm, updated_dttm, is_deleted) VALUES
+(1, 1, NULL, 1, 'This article is incredibly insightful!', '2025-06-01 10:00:00', '2025-06-01 10:00:00', 0),
+(2, 1, 1, 2, 'Totally agree with you.', '2025-06-01 10:15:00', '2025-06-01 10:15:00', 0),
+(3, 2, NULL, 3, 'I think the author missed an important point.', '2025-06-01 11:00:00', '2025-06-01 11:30:00', 0),
+(4, 3, 3, 4, 'What point do you mean?', '2025-05-01 11:45:00', '2025-06-01 11:00:00', 0),
+(5, 4, NULL, 5, 'This was helpful for my research. Thanks!', '2025-05-02 09:00:00', '2025-06-01 11:00:00', 0),
+(6, 5, 1, 1, 'lovely place to go.', '2025-05-01 12:00:00', '2025-06-01 11:00:00', 1),
+(7, 11, NULL, 7, 'General professional career two.', '2025-05-25 11:00:00', '2025-06-01 11:00:00', 0),
+(8, 11, NULL, 11, 'great', '2025-05-25 12:00:00','2025-06-01 11:00:00', 0),
+(9,13, NULL, 1, 'loved to go' , '2025-04-08 02:00:55', '2025-06-01 11:00:00', 0),
+(10, 2, NULL, 6, 'Loved the dessert picks — can’t wait to try them!', '2025-06-02 09:00:00', '2025-06-02 09:00:00', 0),
+(11, 2, 10, 3, 'Pidapipo is my favorite spot too!', '2025-06-02 09:30:00', '2025-06-02 09:30:00', 0),
+(12, 4, NULL, 8, 'I tried Pad Kra Pao last week — absolutely delicious!', '2025-06-02 11:00:00', '2025-06-02 11:00:00', 0),
+(13, 4, 12, 9, 'Agreed! So simple but so flavorful.', '2025-06-02 12:00:00', '2025-06-02 12:00:00', 0),
+(14, 5, NULL, 10, 'Very practical guide, thanks!', '2025-06-03 08:15:00', '2025-06-03 08:15:00', 0),
+(15, 5, NULL, 4, 'Convenience store food in Japan is actually amazing.', '2025-06-03 09:00:00', '2025-06-03 09:00:00', 0),
+(16, 6, NULL, 2, 'Hotteok was my favorite street food in Seoul!', '2025-06-03 11:00:00', '2025-06-03 11:00:00', 0),
+(17, 6, 16, 12, 'Same! So comforting on cold nights.', '2025-06-03 11:20:00', '2025-06-03 11:20:00', 0),
+(18, 7, NULL, 13, 'Rangitoto was surprisingly easy to hike. Great views too.', '2025-06-04 10:00:00', '2025-06-04 10:00:00', 0),
+(19, 8, NULL, 5, 'This park is so underrated. Nice inclusion!', '2025-06-04 11:30:00', '2025-06-04 11:30:00', 0),
+(20, 9, NULL, 14, 'Èze was magical. Feels like a movie set!', '2025-06-05 09:00:00', '2025-06-05 09:00:00', 0),
+(21, 9, 20, 15, 'And the view from the garden is insane!', '2025-06-05 09:30:00', '2025-06-05 09:30:00', 0),
+(22, 10, NULL, 16, 'Route 66 is definitely on my travel bucket list.', '2025-06-06 10:00:00', '2025-06-06 10:00:00', 0),
+(23, 10, 22, 6, 'Just did it last year — it’s worth it!', '2025-06-06 11:00:00', '2025-06-06 11:00:00', 0),
+(24, 12, NULL, 17, 'Spain’s dessert game is strong 💪', '2025-06-06 12:00:00', '2025-06-06 12:00:00', 0),
+(25, 12, 24, 1, 'Agreed! Can’t forget churros con chocolate.', '2025-06-06 12:20:00', '2025-06-06 12:20:00', 0),
+(26, 13, NULL, 18, 'A weekend isn’t enough for NYC 😅', '2025-06-07 09:00:00', '2025-06-07 09:00:00', 0),
+(27, 13, 26, 7, 'True. Still haven’t done half the museums.', '2025-06-07 09:15:00', '2025-06-07 09:15:00', 0),
+(28, 15, NULL, 11, 'Love the cozy cafes in Shoreditch!', '2025-06-07 10:30:00', '2025-06-07 10:30:00', 0),
+(29, 17, NULL, 20, 'Fine dining in Wellington is so underrated.', '2025-06-08 08:00:00', '2025-06-08 08:00:00', 0),
+(30, 17, 29, 3, 'Check out Logan Brown if you haven’t yet!', '2025-06-08 08:30:00', '2025-06-08 08:30:00', 0),
+(31, 18, NULL, 1, 'This dessert place in Madrid sounds divine.', '2025-06-08 09:00:00', '2025-06-08 09:00:00', 0),
+(32, 19, NULL, 9, 'Never thought beverage culture could be so interesting.', '2025-06-08 09:30:00', '2025-06-08 09:30:00', 0),
+(33, 22, NULL, 6, 'Espresso in Barcelona is strong and smooth. Loved it!', '2025-06-09 08:00:00', '2025-06-09 08:00:00', 0),
+(34, 25, NULL, 8, 'Michelin nights = unforgettable experiences.', '2025-06-09 10:00:00', '2025-06-09 10:00:00', 0),
+(35, 25, 34, 10, 'Especially in NYC’s dining scene.', '2025-06-09 10:15:00', '2025-06-09 10:15:00', 0),
+(36, 28, NULL, 11, 'Artisan coffee culture in Auckland is booming!', '2025-06-10 09:00:00', '2025-06-10 09:00:00', 0),
+(37, 30, NULL, 12, 'Spain is dessert heaven 🍰', '2025-06-10 10:00:00', '2025-06-10 10:00:00', 0),
+(38, 30, 37, 13, 'Can’t stop thinking about crema catalana!', '2025-06-10 10:30:00', '2025-06-10 10:30:00', 0),
+(39, 31, NULL, 14, 'Bourbon tasting in Kentucky was a surprising highlight.', '2025-06-10 11:00:00', '2025-06-10 11:00:00', 0);
+
+
+
+
+INSERT INTO comment_mentions (comment_id, mentioned_id)
+VALUES
+(1, 1),
+(2, 2),
+(3, 3),
+(4, 4);
+
+INSERT INTO article_likes (user_id, article_id)
+VALUES
+(1, 1),
+(1, 2),
+(1, 3),
+(1, 11),
+(1, 12),
+(1, 13),
+(1, 14),
+(2, 1),
+(2, 2),
+(2, 3),
+(2, 12),
+(2,13),
+(3, 1),
+(3, 3),
+(3, 8),
+(3, 9),
+(5, 3),
+(4, 5),
+(3,13),
+(4,13),
+(5,13),
+(8, 11), 
+(10, 11), 
+(7, 11),
+(9, 12), 
+(10, 12),
+(11, 1),
+(11, 2),
+(11, 3),
+(11, 4),
+(11, 5),
+(11, 6),
+(11, 7),
+(11, 8),
+(11, 9),
+(11, 10),
+(11, 11),
+(11, 12),
+(11, 13),
+(11, 14),
+(11, 15),
+(11, 16),
+(11, 17),
+(11, 18),
+(11, 19),
+(11, 20),
+(11, 21),
+(11, 22),
+(11, 23),
+(11, 24),
+(11, 25),
+(11, 26),
+(11, 27),
+(11, 28),
+(11, 29),
+(11, 30),
+(13, 1),
+(13, 2),
+(13, 3),
+(13, 4),
+(13, 5),
+(13, 6),
+(13, 7),
+(13, 8),
+(13, 9),
+(13, 10),
+(13, 11),
+(13, 12),
+(13, 13),
+(13, 14),
+(13, 15),
+(13, 16),
+(13, 17),
+(13, 18),
+(13, 19),
+(13, 20),
+(13, 21),
+(13, 22),
+(13, 23),
+(13, 24),
+(13, 25),
+(13, 26),
+(13, 27),
+(13, 28);
+
+
+
+INSERT INTO subscriptions (subscriber_id, target_user_id)
+VALUES
+(1, 3),  -- Annie follows Yang's 
+(1, 2),
+(1, 6),
+(2, 1),  -- Sherry follows Annie's 
+(3, 1),
+(3, 2),  -- Yang follows Sherry's food blog
+(3, 4),
+(4, 5),  -- Steven follows Lip’s 
+(5, 4),  -- Lip follows Steven's 
+(6, 1),
+(7, 1),
+(8, 1),
+(9, 1);
+
+INSERT INTO notifications 
+(notification_id, sender_id, receiver_id, type, article_id, comment_id, is_read)
+VALUES
+(1, 1, 2, 'new_article', 1, NULL, 0),
+(2, 3, 4, 'tag_comment', 3, 3, 0),
+(3, 5, 3, 'new_article', 5, NULL, 0),
+(4, 4, 1, 'tag_comment', 4, 4, 0),
+(5, 2, 5, 'tag_comment', 2, 1, 0);
+
+
+INSERT INTO Avatar (avatar_url) VALUES
+('/image/avatar01.jpg'),
+('/image/avatar02.jpg'),
+('/image/avatar03.jpg'),
+('/image/avatar04.jpg'),
+('/image/avatar05.jpg'),
+('/image/avatar06.jpg'),
+('/image/avatar07.jpg'),
+('/image/avatar08.png'),
+('/image/avatar09.png'),
+('/image/avatar10.png'),
+('/image/avatar11.png'),
+('/image/avatar12.png'),
+('/image/avatar13.png'),
+('/image/avatar14.png'),
+('/image/avatar15.png');
+</sql><current_tab id="0"/></tab_sql></sqlb_project>
