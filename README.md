@@ -77,18 +77,19 @@ npm install uuid
 npm install nlp
 npm install yup
 
-### 2.2 Frontend Setup
+2.2 Frontend Setup
 cd frontend
 npm install
 
-## 3. Run in Development Mode
-### 3.1 Start Backend Server 
+3. Run in Development Mode
+3.1 Start Backend Server
+
 http://localhost:3000
 
 cd backend
 npm run dev
+3.2 Start Frontend Server
 
-### 3.2 Start Frontend Server 
 http://localhost:5173
 
 cd frontend
@@ -96,16 +97,16 @@ npm run dev
 
 Access the site via: http://localhost:5173
 
-### 3.3 Start Admin Panel (Java Swing)
+3.3 Start Admin Panel (Java Swing)
+
 ictgradschool.industry.administrator.Main
 
-## 4. Test Accounts (For Feature Testing)
-User Role	    Username   Password
-Admin	        admin123   123456Aa
-Regular User	annie88	   123456Aa
+4. Test Accounts (For Feature Testing)
+UserRole	      Username      	Password
+Admin	          admin123	      123456Aa
+RegularUser   	annie88       	123456Aa
 
-## 5. Project Structure (Simplified Overview)
-```bash
+5. Project Structure (Simplified Overview)
 group-8-s1-25/
 │
 ├── backend/                # Express backend with API logic
